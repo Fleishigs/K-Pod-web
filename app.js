@@ -123,11 +123,7 @@ function handleRoute(page, podcastId, updateHistory = true) {
                 openPodcast(podcastId);
             }
             break;
-        case 'nowplaying':
-            if (currentEpisode) {
-                openNowPlaying();
-            }
-            break;
+        // Note: 'nowplaying' removed - it's a sidebar, not a page/route
     }
 }
 
@@ -142,9 +138,8 @@ function updateURL(page, podcastId = null, addToHistory = true) {
             url = `/podcast/${slug}`;
             state.podcastId = podcastId;
         }
-    } else if (page === 'nowplaying') {
-        url = '/now-playing';
     }
+    // Note: 'nowplaying' removed - sidebar doesn't need URL
     
     if (addToHistory) {
         window.history.pushState(state, '', url);
@@ -249,30 +244,23 @@ function setupEventListeners() {
 
 // Navigation
 function showPage(page) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    page.classList.add('active');
-    
-    if (page === homePage) currentPage = 'home';
-    else if (page === podcastPage) currentPage = 'podcast';
-    else if (page === nowPlayingPage) currentPage = 'nowplaying';
+    // Don't hide pages - just manage which is active for navigation purposes
+    if (page === homePage) {
+        homePage.classList.add('active');
+        podcastPage.classList.remove('active');
+        currentPage = 'home';
+    } else if (page === podcastPage) {
+        homePage.classList.remove('active');
+        podcastPage.classList.add('active');
+        currentPage = 'podcast';
+    }
+    // Note: Now Playing is NEVER shown as a page, only as a sidebar
     
     updateNavigation();
     
-    // Handle Now Playing visibility
-    if (currentPage === 'nowplaying') {
-        // On desktop, show as sidebar and keep mini player
-        if (window.innerWidth >= 1024) {
-            document.body.classList.add('now-playing-open');
-            showMiniPlayer(); // Keep mini player on desktop
-        } else {
-            // On mobile, hide mini player
-            hideMiniPlayer();
-        }
-    } else {
-        document.body.classList.remove('now-playing-open');
-        if (currentEpisode && audio.src) {
-            showMiniPlayer();
-        }
+    // Now Playing is always a sidebar, never hides main content
+    if (currentEpisode && audio.src) {
+        showMiniPlayer();
     }
 }
 
@@ -868,13 +856,26 @@ function updateNowPlayingPage() {
 function openNowPlaying() {
     if (!currentEpisode) return;
     updateNowPlayingPage();
-    showPage(nowPlayingPage);
-    updateURL('nowplaying');
+    
+    // Toggle sidebar open
+    nowPlayingPage.classList.add('active');
+    document.body.classList.add('now-playing-open');
+    
+    // On mobile, hide mini player when sidebar is open
+    if (window.innerWidth < 1024) {
+        hideMiniPlayer();
+    }
 }
 
 function closeNowPlaying() {
-    // Go back using browser history
-    window.history.back();
+    // Close sidebar
+    nowPlayingPage.classList.remove('active');
+    document.body.classList.remove('now-playing-open');
+    
+    // Show mini player again
+    if (currentEpisode && audio.src) {
+        showMiniPlayer();
+    }
 }
 
 function togglePlayPause() {
@@ -1022,7 +1023,24 @@ function handleEpisodeEnded() {
         const currentIndex = filteredEpisodes.indexOf(currentEpisode);
         if (currentIndex >= 0 && currentIndex < filteredEpisodes.length - 1) {
             console.log('▶️ Auto-playing next episode');
+            
+            // Remember if Now Playing was open
+            const nowPlayingWasOpen = nowPlayingPage.classList.contains('active');
+            
+            // Play next episode
             playEpisode(currentIndex + 1);
+            
+            // Keep Now Playing open if it was open
+            if (nowPlayingWasOpen) {
+                // Small delay to ensure episode is loaded
+                setTimeout(() => {
+                    nowPlayingPage.classList.add('active');
+                    document.body.classList.add('now-playing-open');
+                }, 100);
+            }
+            
+            // Always keep mini player visible
+            showMiniPlayer();
         }
     }
 }

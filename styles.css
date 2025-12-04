@@ -739,11 +739,25 @@ body {
     color: var(--text-primary);
 }
 
-/* Now Playing Page */
+/* Now Playing Page - Always as Sidebar */
 .now-playing-page {
-    background: var(--bg-dark);
+    position: fixed;
+    right: 0;
+    top: 70px;
+    bottom: 0;
+    width: 400px;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
     overflow-y: auto;
-    position: relative;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 998;
+    box-shadow: -4px 0 20px var(--shadow);
+}
+
+/* Show sidebar when active */
+.now-playing-page.active {
+    transform: translateX(0);
 }
 
 .now-playing-close-btn {
@@ -757,7 +771,7 @@ body {
     border-radius: 50%;
     color: var(--text-primary);
     cursor: pointer;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
@@ -770,89 +784,61 @@ body {
 }
 
 .now-playing-content {
-    max-width: 600px;
-    margin: 0 auto;
+    max-width: 100%;
     padding: 20px;
+    padding-top: 60px; /* Space for close button */
 }
 
-/* Desktop Sidebar Layout */
-@media (min-width: 1024px) {
+/* Adjust main content when sidebar is open */
+body.now-playing-open .page:not(.now-playing-page) {
+    padding-right: 420px; /* 400px sidebar + 20px spacing */
+    transition: padding-right 0.3s ease;
+}
+
+/* Adjust podcast grid for narrower space */
+body.now-playing-open #podcastsContainer {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* Adjust mini player position */
+body.now-playing-open .mini-player {
+    right: 400px; /* Position to left of sidebar */
+    transition: right 0.3s ease;
+}
+
+/* Mobile Responsive - Full screen on mobile */
+@media (max-width: 1023px) {
+    .now-playing-page {
+        top: 0;
+        width: 100%;
+        z-index: 1001;
+        background: var(--bg-dark);
+    }
+    
     .now-playing-page.active {
-        position: fixed;
-        right: 0;
-        top: 70px;
-        bottom: 0;
-        width: 400px;
-        border-left: 1px solid var(--border);
-        background: var(--bg-card);
-        z-index: 998;
-        box-shadow: -4px 0 20px var(--shadow);
-        animation: slideInRight 0.3s ease;
+        transform: translateX(0);
     }
     
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-        }
-        to {
-            transform: translateX(0);
-        }
+    body.now-playing-open .page:not(.now-playing-page) {
+        display: none; /* Hide main content on mobile when Now Playing is open */
     }
     
-    /* Show close button on desktop */
-    .now-playing-page.active .now-playing-close-btn {
-        display: flex;
+    body.now-playing-open .mini-player {
+        display: none; /* Hide mini player on mobile */
+    }
+    
+    body.now-playing-open .top-nav {
+        display: none; /* Hide top nav on mobile */
     }
     
     .now-playing-content {
-        max-width: 100%;
-        padding: 20px;
-        height: 100%;
-        overflow-y: auto;
-    }
-    
-    /* RESIZE content when Now Playing is open instead of shifting */
-    body.now-playing-open .page:not(.now-playing-page) {
-        padding-right: 420px; /* 400px sidebar + 20px padding */
-        transition: padding-right 0.3s ease;
-    }
-    
-    body.now-playing-open #podcastsContainer {
-        /* Adjust grid for narrower space */
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
-    
-    body.now-playing-open .podcast-hero {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    /* Smaller artwork for sidebar */
-    .now-playing-page.active .now-playing-artwork {
-        max-width: 280px;
-        margin: 10px auto;
-    }
-    
-    /* Compact settings */
-    .now-playing-page.active .now-playing-settings {
-        margin-top: 15px;
-    }
-    
-    .now-playing-page.active .setting-group {
-        padding: 12px 0;
-    }
-    
-    /* Show mini player on desktop even when Now Playing is open */
-    body.now-playing-open .mini-player {
-        transform: translateY(0);
-        right: 400px; /* Position it to the left of sidebar */
-        transition: right 0.3s ease;
+        padding-top: 20px;
     }
 }
 
 .now-playing-artwork {
     width: 100%;
-    max-width: 400px;
+    max-width: 280px;
     aspect-ratio: 1;
     margin: 20px auto;
     border-radius: 20px;
