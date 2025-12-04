@@ -4,16 +4,27 @@ let currentPodcast = null;
 let allEpisodes = [];
 let filteredEpisodes = [];
 let currentEpisode = null;
-let currentPage = 'home'; // Track current page
+let currentPage = 'home';
 
-// Pages
+// DOM Elements
 const homePage = document.getElementById('homePage');
 const podcastPage = document.getElementById('podcastPage');
+const loading = document.getElementById('loading');
+const podcastsContainer = document.getElementById('podcastsContainer');
 
 // Navigation elements
-const topNav = document.querySelector('.top-nav');
 const navBackBtn = document.getElementById('navBackBtn');
 const navLogo = document.getElementById('navLogo');
+
+// Podcast detail elements
+const podcastArtwork = document.getElementById('podcastArtwork');
+const podcastTitle = document.getElementById('podcastTitle');
+const podcastCategory = document.getElementById('podcastCategory');
+const podcastDescription = document.getElementById('podcastDescription');
+const podcastNetwork = document.getElementById('podcastNetwork');
+const episodeSearch = document.getElementById('episodeSearch');
+const episodeLoading = document.getElementById('episodeLoading');
+const episodeList = document.getElementById('episodeList');
 
 // Audio element
 const audio = document.getElementById('audio');
@@ -30,42 +41,6 @@ const miniRewind = document.getElementById('miniRewind');
 const miniForward = document.getElementById('miniForward');
 const miniPlayerClose = document.getElementById('miniPlayerClose');
 const miniProgressFill = document.getElementById('miniProgressFill');
-
-// Pages
-const homePage = document.getElementById('homePage');
-const podcastPage = document.getElementById('podcastPage');
-const playerPage = document.getElementById('playerPage');
-
-// Home elements
-const loading = document.getElementById('loading');
-const podcastsContainer = document.getElementById('podcastsContainer');
-
-// Podcast detail elements
-const podcastArtwork = document.getElementById('podcastArtwork');
-const podcastTitle = document.getElementById('podcastTitle');
-const podcastCategory = document.getElementById('podcastCategory');
-const podcastDescription = document.getElementById('podcastDescription');
-const podcastNetwork = document.getElementById('podcastNetwork');
-const episodeSearch = document.getElementById('episodeSearch');
-const episodeLoading = document.getElementById('episodeLoading');
-const episodeList = document.getElementById('episodeList');
-
-// Player elements
-const audio = document.getElementById('audio');
-const playerArtworkFull = document.getElementById('playerArtworkFull');
-const playerTitleFull = document.getElementById('playerTitleFull');
-const playerPodcastFull = document.getElementById('playerPodcastFull');
-const playPause = document.getElementById('playPause');
-const playIcon = document.getElementById('playIcon');
-const pauseIcon = document.getElementById('pauseIcon');
-const rewind = document.getElementById('rewind');
-const forward = document.getElementById('forward');
-const currentTimeEl = document.getElementById('currentTime');
-const durationEl = document.getElementById('duration');
-const progressBar = document.getElementById('progressBar');
-const progressFill = document.getElementById('progressFill');
-const progressHandle = document.getElementById('progressHandle');
-const volumeSlider = document.getElementById('volumeSlider');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
@@ -89,7 +64,7 @@ function setupEventListeners() {
     miniForward.addEventListener('click', () => audio.currentTime = Math.min(audio.duration, audio.currentTime + 30));
     miniPlayerClose.addEventListener('click', closeMiniPlayer);
     
-    // Refresh button - use setTimeout to ensure DOM is loaded
+    // Refresh button
     setTimeout(() => {
         const refreshBtn = document.getElementById('refreshEpisodes');
         if (refreshBtn) {
@@ -116,7 +91,6 @@ function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     page.classList.add('active');
     
-    // Update current page state
     if (page === homePage) currentPage = 'home';
     else if (page === podcastPage) currentPage = 'podcast';
     
@@ -124,7 +98,6 @@ function showPage(page) {
 }
 
 function updateNavigation() {
-    // Show/hide back button based on page
     if (currentPage === 'home') {
         navBackBtn.classList.add('hidden');
     } else {
@@ -145,65 +118,16 @@ function goHome() {
     filteredEpisodes = [];
 }
 
-// Mini Player Functions
-function showMiniPlayer() {
-    miniPlayer.classList.remove('hidden');
-}
-
-function hideMiniPlayer() {
-    miniPlayer.classList.add('hidden');
-}
-
-function updateMiniPlayer() {
-    if (!currentEpisode) return;
-    
-    miniPlayerTitle.textContent = currentEpisode.title;
-    miniPlayerPodcast.textContent = currentPodcast?.name || '';
-    
-    // Update artwork
-    const artworkUrl = currentPodcast?.displayArtwork || currentPodcast?.artwork_url;
-    if (artworkUrl) {
-        miniPlayerArtwork.innerHTML = `<img src="${artworkUrl}" alt="${currentPodcast.name}" onerror="this.parentElement.innerHTML='🎙️'">`;
-    } else {
-        miniPlayerArtwork.textContent = '🎙️';
-    }
-    
-    showMiniPlayer();
-}
-
-function closeMiniPlayer() {
-    audio.pause();
-    audio.src = '';
-    hideMiniPlayer();
-    currentEpisode = null;
-}
-
-function togglePlayPause() {
-    if (audio.paused) {
-        audio.play();
-    } else {
-        audio.pause();
-    }
-}
-
-function updateProgress() {
-    if (audio.duration) {
-        const percent = (audio.currentTime / audio.duration) * 100;
-        miniProgressFill.style.width = `${percent}%`;
-    }
-}
-
 function refreshEpisodes() {
     if (!currentPodcast) return;
     
     const refreshBtn = document.getElementById('refreshEpisodes');
     if (refreshBtn) {
-        const originalText = refreshBtn.innerHTML;
+        const originalHTML = refreshBtn.innerHTML;
         refreshBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Refreshing...';
         refreshBtn.disabled = true;
     }
     
-    // Reload episodes
     loadEpisodes().finally(() => {
         if (refreshBtn) {
             setTimeout(() => {
@@ -306,12 +230,10 @@ async function openPodcast(id) {
     
     showPage(podcastPage);
     
-    // Reset episode list
     episodeSearch.value = '';
     episodeList.innerHTML = '';
     episodeLoading.style.display = 'flex';
     
-    // Load episodes and extract artwork from RSS
     await loadEpisodes();
 }
 
@@ -322,18 +244,15 @@ async function loadEpisodes() {
         const xmlText = await fetchRSSFeed(currentPodcast.rss_url);
         const { episodes, channelInfo } = parseRSSFeed(xmlText);
         
-        // Use RSS artwork if available, fallback to whitelist artwork
         const rssArtwork = channelInfo.artwork || currentPodcast.artwork_url;
         const rssDescription = channelInfo.description || currentPodcast.description;
         
-        // Update podcast info with RSS data
         if (rssArtwork) {
             podcastArtwork.innerHTML = `<img src="${rssArtwork}" alt="${currentPodcast.name}" onerror="this.parentElement.innerHTML='🎙️'">`;
         } else {
             podcastArtwork.textContent = '🎙️';
         }
         
-        // Store artwork for later use
         currentPodcast.displayArtwork = rssArtwork;
         
         podcastTitle.textContent = currentPodcast.name;
@@ -361,7 +280,6 @@ async function loadEpisodes() {
         console.error('Error loading episodes:', error);
         episodeLoading.style.display = 'none';
         
-        // Set podcast info even if episodes fail
         if (currentPodcast.artwork_url) {
             podcastArtwork.innerHTML = `<img src="${currentPodcast.artwork_url}" alt="${currentPodcast.name}">`;
         } else {
@@ -385,37 +303,30 @@ async function loadEpisodes() {
 async function fetchRSSFeed(url) {
     console.log('🔍 Fetching RSS feed:', url);
     
-    // Try multiple CORS proxy services with different approaches
     const proxies = [
-        // AllOrigins - usually most reliable
         {
             url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
             name: 'AllOrigins'
         },
-        // AllOrigins with get method
         {
             url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
             name: 'AllOrigins-JSON',
             parseJSON: true
         },
-        // Corsproxy.io
         {
             url: `https://corsproxy.io/?${encodeURIComponent(url)}`,
             name: 'CorsProxy'
         },
-        // RSS2JSON service
         {
             url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`,
             name: 'RSS2JSON',
             parseJSON: true,
             convertFromJSON: true
         },
-        // Codetabs proxy
         {
             url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
             name: 'CodeTabs'
         },
-        // Direct attempt (might work in some cases)
         {
             url: url,
             name: 'Direct'
@@ -429,7 +340,7 @@ async function fetchRSSFeed(url) {
             console.log(`  ⏳ Trying ${proxy.name}...`);
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
             
             const response = await fetch(proxy.url, {
                 signal: controller.signal,
@@ -450,10 +361,8 @@ async function fetchRSSFeed(url) {
             if (proxy.parseJSON) {
                 const json = await response.json();
                 if (proxy.convertFromJSON && json.items) {
-                    // Convert RSS2JSON format to XML
                     text = convertRSS2JSONToXML(json);
                 } else if (json.contents) {
-                    // AllOrigins JSON format
                     text = json.contents;
                 } else {
                     throw new Error('Unexpected JSON format');
@@ -462,7 +371,6 @@ async function fetchRSSFeed(url) {
                 text = await response.text();
             }
             
-            // Validate that we got XML
             if (!text || text.trim().length === 0) {
                 throw new Error('Empty response');
             }
@@ -471,7 +379,6 @@ async function fetchRSSFeed(url) {
                 throw new Error('Response is not XML');
             }
             
-            // Check if it's actually RSS/XML
             if (!text.includes('<rss') && !text.includes('<feed') && !text.includes('<?xml')) {
                 throw new Error('Response is not RSS/Atom feed');
             }
@@ -482,17 +389,13 @@ async function fetchRSSFeed(url) {
         } catch (error) {
             console.warn(`  ❌ ${proxy.name} failed:`, error.message);
             lastError = error;
-            
-            // Continue to next proxy
             continue;
         }
     }
     
-    // All methods failed
     throw new Error(`Could not fetch RSS feed after trying all methods. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
-// Helper function to convert RSS2JSON format to basic XML
 function convertRSS2JSONToXML(json) {
     let xml = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>';
     xml += `<title>${escapeXml(json.feed?.title || 'Podcast')}</title>`;
@@ -528,23 +431,17 @@ function escapeXml(text) {
 
 function parseRSSFeed(xmlText) {
     try {
-        // Clean up common XML issues
-        xmlText = xmlText.trim();
-        
-        // Remove any leading/trailing whitespace or BOM
-        xmlText = xmlText.replace(/^\uFEFF/, '');
+        xmlText = xmlText.trim().replace(/^\uFEFF/, '');
         
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlText, 'text/xml');
         
-        // Check for parser errors
         const parserError = xml.querySelector('parsererror');
         if (parserError) {
             console.error('XML Parser Error:', parserError.textContent);
             throw new Error('XML parsing failed - feed may be malformed');
         }
         
-        // Extract channel info
         const channel = xml.querySelector('channel');
         if (!channel) {
             throw new Error('No channel element found in RSS feed');
@@ -555,7 +452,6 @@ function parseRSSFeed(xmlText) {
             description: null
         };
         
-        // Try different artwork sources
         let itunesImage = channel.querySelector('itunes\\:image');
         if (!itunesImage) {
             itunesImage = Array.from(channel.getElementsByTagName('itunes:image'))[0];
@@ -576,7 +472,6 @@ function parseRSSFeed(xmlText) {
             channelInfo.description = stripHtml(desc.textContent).trim();
         }
         
-        // Parse episodes
         const items = xml.querySelectorAll('item');
         if (items.length === 0) {
             console.warn('No items found in RSS feed');
@@ -585,7 +480,6 @@ function parseRSSFeed(xmlText) {
         const episodes = Array.from(items).slice(0, 100).map(item => {
             let audioUrl = '';
             
-            // Try to find audio URL
             const enclosure = item.querySelector('enclosure');
             if (enclosure) {
                 audioUrl = enclosure.getAttribute('url') || '';
@@ -690,13 +584,8 @@ function playEpisode(index) {
     currentEpisode = filteredEpisodes[index];
     if (!currentEpisode || !currentEpisode.audioUrl) return;
     
-    // Set audio source
     audio.src = currentEpisode.audioUrl;
-    
-    // Update mini player
     updateMiniPlayer();
-    
-    // Play
     audio.play();
 }
 
@@ -715,38 +604,52 @@ function updateProgress() {
     }
 }
 
-function updateDuration() {
-    // Not needed anymore since we removed the full player
+function showMiniPlayer() {
+    miniPlayer.classList.remove('hidden');
 }
 
-function seek(e) {
-    // Not needed anymore
+function hideMiniPlayer() {
+    miniPlayer.classList.add('hidden');
+}
+
+function updateMiniPlayer() {
+    if (!currentEpisode) return;
+    
+    miniPlayerTitle.textContent = currentEpisode.title;
+    miniPlayerPodcast.textContent = currentPodcast?.name || '';
+    
+    const artworkUrl = currentPodcast?.displayArtwork || currentPodcast?.artwork_url;
+    if (artworkUrl) {
+        miniPlayerArtwork.innerHTML = `<img src="${artworkUrl}" alt="${currentPodcast.name}" onerror="this.parentElement.innerHTML='🎙️'">`;
+    } else {
+        miniPlayerArtwork.textContent = '🎙️';
+    }
+    
+    showMiniPlayer();
+}
+
+function closeMiniPlayer() {
+    audio.pause();
+    audio.src = '';
+    hideMiniPlayer();
+    currentEpisode = null;
 }
 
 function downloadEpisode(index) {
     const episode = filteredEpisodes[index];
     if (!episode || !episode.audioUrl) return;
     
-    console.log('Downloading:', episode.audioUrl);
-    
-    // Create filename
-    const filename = sanitizeFilename(episode.title) + '.mp3';
-    
-    // Try direct download first
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = episode.audioUrl;
-    a.download = filename;
+    a.download = sanitizeFilename(episode.title) + '.mp3';
     a.target = '_blank';
     
-    // For better compatibility, add to DOM briefly
     document.body.appendChild(a);
     
     try {
-        // Try to trigger download
         a.click();
         
-        // Show feedback
         const btn = event.target;
         const originalText = btn.textContent;
         btn.textContent = '✓ Downloading...';
@@ -759,10 +662,8 @@ function downloadEpisode(index) {
         
     } catch (error) {
         console.error('Download failed:', error);
-        // Fallback: open in new window
         window.open(episode.audioUrl, '_blank');
     } finally {
-        // Clean up
         setTimeout(() => {
             document.body.removeChild(a);
         }, 100);
@@ -794,13 +695,6 @@ function formatDate(dateString) {
     } catch {
         return '';
     }
-}
-
-function formatTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function formatDuration(duration) {
