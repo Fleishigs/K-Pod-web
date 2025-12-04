@@ -5,8 +5,12 @@ let allEpisodes = [];
 let filteredEpisodes = [];
 let currentEpisode = null;
 let currentPage = 'home';
+let currentSpeed = 1;
+let sleepTimer = null;
+let sleepTimerEndTime = null;
+let autoPlayNext = true;
 
-// DOM Elements
+// DOM Elements - Pages
 const homePage = document.getElementById('homePage');
 const podcastPage = document.getElementById('podcastPage');
 const nowPlayingPage = document.getElementById('nowPlayingPage');
@@ -62,11 +66,6 @@ const nowPlayingForward = document.getElementById('nowPlayingForward');
 const nowPlayingVolume = document.getElementById('nowPlayingVolume');
 const volumePercent = document.getElementById('volumePercent');
 
-// Settings state
-let currentSpeed = 1;
-let sleepTimer = null;
-let sleepTimerEndTime = null;
-
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
 
@@ -84,10 +83,52 @@ function setupEventListeners() {
     });
     
     // Mini player controls
-    miniPlayPause.addEventListener('click', togglePlayPause);
-    miniRewind.addEventListener('click', () => audio.currentTime = Math.max(0, audio.currentTime - 15));
-    miniForward.addEventListener('click', () => audio.currentTime = Math.min(audio.duration, audio.currentTime + 30));
-    miniPlayerClose.addEventListener('click', closeMiniPlayer);
+    miniPlayerContent.addEventListener('click', openNowPlaying);
+    miniPlayPause.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePlayPause();
+    });
+    miniSpeed.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleSpeed();
+    });
+    miniRewind.addEventListener('click', (e) => {
+        e.stopPropagation();
+        audio.currentTime = Math.max(0, audio.currentTime - 15);
+    });
+    miniForward.addEventListener('click', (e) => {
+        e.stopPropagation();
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + 30);
+    });
+    miniPlayerClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeMiniPlayer();
+    });
+    
+    // Now Playing controls
+    nowPlayingPlayPause.addEventListener('click', togglePlayPause);
+    nowPlayingRewind.addEventListener('click', () => audio.currentTime = Math.max(0, audio.currentTime - 15));
+    nowPlayingForward.addEventListener('click', () => audio.currentTime = Math.min(audio.duration, audio.currentTime + 30));
+    nowPlayingProgressBar.addEventListener('click', seek);
+    nowPlayingVolume.addEventListener('input', updateVolume);
+    
+    // Speed buttons
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const speed = parseFloat(btn.dataset.speed);
+            setSpeed(speed);
+        });
+    });
+    
+    // Sleep timer buttons
+    document.querySelectorAll('.timer-btn[data-minutes]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const minutes = parseInt(btn.dataset.minutes);
+            setSleepTimer(minutes);
+        });
+    });
+    
+    document.getElementById('cancelTimer')?.addEventListener('click', cancelSleepTimer);
     
     // Refresh button
     setTimeout(() => {
@@ -101,14 +142,20 @@ function setupEventListeners() {
     
     // Audio events
     audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('play', () => {
         miniPlayIcon.classList.add('hidden');
         miniPauseIcon.classList.remove('hidden');
+        nowPlayingPlayIcon.classList.add('hidden');
+        nowPlayingPauseIcon.classList.remove('hidden');
     });
     audio.addEventListener('pause', () => {
         miniPlayIcon.classList.remove('hidden');
         miniPauseIcon.classList.add('hidden');
+        nowPlayingPlayIcon.classList.remove('hidden');
+        nowPlayingPauseIcon.classList.add('hidden');
     });
+    audio.addEventListener('ended', handleEpisodeEnded);
 }
 
 // Navigation
@@ -118,8 +165,16 @@ function showPage(page) {
     
     if (page === homePage) currentPage = 'home';
     else if (page === podcastPage) currentPage = 'podcast';
+    else if (page === nowPlayingPage) currentPage = 'nowplaying';
     
     updateNavigation();
+    
+    // Show/hide mini player based on page
+    if (currentPage === 'nowplaying') {
+        hideMiniPlayer();
+    } else if (currentEpisode && audio.src) {
+        showMiniPlayer();
+    }
 }
 
 function updateNavigation() {
@@ -131,7 +186,14 @@ function updateNavigation() {
 }
 
 function handleBackButton() {
-    if (currentPage === 'podcast') {
+    if (currentPage === 'nowplaying') {
+        // Go back to podcast page if we have one, otherwise home
+        if (currentPodcast) {
+            showPage(podcastPage);
+        } else {
+            goHome();
+        }
+    } else if (currentPage === 'podcast') {
         goHome();
     }
 }
@@ -180,11 +242,7 @@ async function loadPodcasts() {
             podcasts = data.podcasts;
             console.log(`✅ Loaded ${podcasts.length} podcasts`);
             
-            // Render immediately with placeholder images
             renderPodcasts();
-            
-            // Then fetch RSS artwork for each podcast in the background
-            console.log('🎨 Fetching RSS artwork for all podcasts...');
             fetchAllPodcastArtwork();
         } else {
             throw new Error('Invalid data format - missing podcasts array');
@@ -199,47 +257,6 @@ async function loadPodcasts() {
             </div>
         `;
     }
-}
-
-// Fetch artwork from RSS feeds for all podcasts
-async function fetchAllPodcastArtwork() {
-    for (let i = 0; i < podcasts.length; i++) {
-        const podcast = podcasts[i];
-        
-        try {
-            console.log(`  🔍 [${i+1}/${podcasts.length}] Fetching RSS artwork for: ${podcast.name}`);
-            const xmlText = await fetchRSSFeed(podcast.rss_url);
-            const { channelInfo } = parseRSSFeed(xmlText);
-            
-            if (channelInfo.artwork) {
-                console.log(`  ✅ Found artwork for ${podcast.name}`);
-                podcast.rssArtwork = channelInfo.artwork;
-                
-                // Update the card image immediately
-                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
-                if (card) {
-                    card.classList.remove('loading-artwork');
-                    card.innerHTML = `<img src="${channelInfo.artwork}" alt="${escapeHtml(podcast.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size: 3rem;\\'>🎙️</span>';">`;
-                }
-            } else {
-                console.log(`  ⚠️ No artwork in RSS for ${podcast.name}, keeping emoji`);
-                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
-                if (card) {
-                    card.classList.remove('loading-artwork');
-                }
-            }
-        } catch (error) {
-            console.warn(`  ❌ Failed to fetch RSS for ${podcast.name}:`, error.message);
-            const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
-            if (card) {
-                card.classList.remove('loading-artwork');
-            }
-        }
-        
-        // Small delay to avoid overwhelming the proxies
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    console.log('✅ Finished fetching all RSS artwork');
 }
 
 async function fetchWithFallback(url) {
@@ -273,6 +290,45 @@ async function fetchWithFallback(url) {
     throw new Error('All fetch methods failed');
 }
 
+// Fetch artwork from RSS feeds for all podcasts
+async function fetchAllPodcastArtwork() {
+    for (let i = 0; i < podcasts.length; i++) {
+        const podcast = podcasts[i];
+        
+        try {
+            console.log(`  🔍 [${i+1}/${podcasts.length}] Fetching RSS artwork for: ${podcast.name}`);
+            const xmlText = await fetchRSSFeed(podcast.rss_url);
+            const { channelInfo } = parseRSSFeed(xmlText);
+            
+            if (channelInfo.artwork) {
+                console.log(`  ✅ Found artwork for ${podcast.name}`);
+                podcast.rssArtwork = channelInfo.artwork;
+                
+                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                if (card) {
+                    card.classList.remove('loading-artwork');
+                    card.innerHTML = `<img src="${channelInfo.artwork}" alt="${escapeHtml(podcast.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size: 3rem;\\'>🎙️</span>';">`;
+                }
+            } else {
+                console.log(`  ⚠️ No artwork in RSS for ${podcast.name}, keeping emoji`);
+                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                if (card) {
+                    card.classList.remove('loading-artwork');
+                }
+            }
+        } catch (error) {
+            console.warn(`  ❌ Failed to fetch RSS for ${podcast.name}:`, error.message);
+            const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+            if (card) {
+                card.classList.remove('loading-artwork');
+            }
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    console.log('✅ Finished fetching all RSS artwork');
+}
+
 // Render Podcasts
 function renderPodcasts() {
     loading.classList.add('hidden');
@@ -281,7 +337,6 @@ function renderPodcasts() {
     console.log('🎨 Rendering podcasts with RSS artwork loading...');
     
     podcastsContainer.innerHTML = podcasts.map(podcast => {
-        // Start with emoji and loading class, RSS artwork will load in background
         return `
             <div class="podcast-card" data-podcast-id="${podcast.id}" onclick="openPodcast(${podcast.id})">
                 <div class="podcast-artwork loading-artwork">
@@ -660,31 +715,10 @@ function playEpisode(index) {
     if (!currentEpisode || !currentEpisode.audioUrl) return;
     
     audio.src = currentEpisode.audioUrl;
+    audio.playbackRate = currentSpeed;
     updateMiniPlayer();
+    updateNowPlayingPage();
     audio.play();
-}
-
-function togglePlayPause() {
-    if (audio.paused) {
-        audio.play();
-    } else {
-        audio.pause();
-    }
-}
-
-function updateProgress() {
-    if (audio.duration) {
-        const percent = (audio.currentTime / audio.duration) * 100;
-        miniProgressFill.style.width = `${percent}%`;
-    }
-}
-
-function showMiniPlayer() {
-    miniPlayer.classList.remove('hidden');
-}
-
-function hideMiniPlayer() {
-    miniPlayer.classList.add('hidden');
 }
 
 function updateMiniPlayer() {
@@ -703,11 +737,174 @@ function updateMiniPlayer() {
     showMiniPlayer();
 }
 
+function updateNowPlayingPage() {
+    if (!currentEpisode) return;
+    
+    nowPlayingTitle.textContent = currentEpisode.title;
+    nowPlayingPodcast.textContent = currentPodcast?.name || '';
+    
+    const artworkUrl = currentPodcast?.displayArtwork || currentPodcast?.artwork_url;
+    if (artworkUrl) {
+        nowPlayingArtwork.innerHTML = `<img src="${artworkUrl}" alt="${currentPodcast.name}">`;
+    } else {
+        nowPlayingArtwork.textContent = '🎙️';
+    }
+}
+
+function openNowPlaying() {
+    if (!currentEpisode) return;
+    updateNowPlayingPage();
+    showPage(nowPlayingPage);
+}
+
+function togglePlayPause() {
+    if (audio.paused) {
+        audio.play();
+    } else {
+        audio.pause();
+    }
+}
+
+function updateProgress() {
+    if (audio.duration) {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        
+        miniProgressFill.style.width = `${percent}%`;
+        nowPlayingProgressFill.style.width = `${percent}%`;
+        nowPlayingProgressHandle.style.left = `${percent}%`;
+        nowPlayingCurrentTime.textContent = formatTime(audio.currentTime);
+    }
+}
+
+function updateDuration() {
+    if (audio.duration) {
+        nowPlayingDuration.textContent = formatTime(audio.duration);
+    }
+}
+
+function seek(e) {
+    const rect = nowPlayingProgressBar.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = percent * audio.duration;
+}
+
+function showMiniPlayer() {
+    miniPlayer.classList.remove('hidden');
+}
+
+function hideMiniPlayer() {
+    miniPlayer.classList.add('hidden');
+}
+
 function closeMiniPlayer() {
     audio.pause();
     audio.src = '';
     hideMiniPlayer();
     currentEpisode = null;
+}
+
+// Speed Controls
+function cycleSpeed() {
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+    const currentIndex = speeds.indexOf(currentSpeed);
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    setSpeed(speeds[nextIndex]);
+}
+
+function setSpeed(speed) {
+    currentSpeed = speed;
+    audio.playbackRate = speed;
+    
+    // Update mini player speed button
+    if (miniSpeed) {
+        const speedText = miniSpeed.querySelector('.speed-text');
+        if (speedText) {
+            speedText.textContent = `${speed}×`;
+        }
+    }
+    
+    // Update speed buttons in Now Playing
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        if (parseFloat(btn.dataset.speed) === speed) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    console.log(`🎵 Playback speed set to ${speed}×`);
+}
+
+// Volume Control
+function updateVolume() {
+    const volume = nowPlayingVolume.value / 100;
+    audio.volume = volume;
+    volumePercent.textContent = `${nowPlayingVolume.value}%`;
+}
+
+// Sleep Timer
+function setSleepTimer(minutes) {
+    cancelSleepTimer();
+    
+    const milliseconds = minutes * 60 * 1000;
+    sleepTimerEndTime = Date.now() + milliseconds;
+    
+    sleepTimer = setTimeout(() => {
+        audio.pause();
+        cancelSleepTimer();
+        
+        const status = document.getElementById('timerStatus');
+        if (status) {
+            status.textContent = 'Sleep timer ended';
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 3000);
+        }
+    }, milliseconds);
+    
+    document.querySelectorAll('.timer-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    const status = document.getElementById('timerStatus');
+    if (status) {
+        status.textContent = `Timer set for ${minutes} minute${minutes > 1 ? 's' : ''}`;
+        status.classList.remove('hidden');
+    }
+    
+    console.log(`⏰ Sleep timer set for ${minutes} minutes`);
+}
+
+function cancelSleepTimer() {
+    if (sleepTimer) {
+        clearTimeout(sleepTimer);
+        sleepTimer = null;
+        sleepTimerEndTime = null;
+    }
+    
+    document.querySelectorAll('.timer-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const status = document.getElementById('timerStatus');
+    if (status) {
+        status.classList.add('hidden');
+    }
+    
+    console.log('⏰ Sleep timer cancelled');
+}
+
+// Auto-Play Next Episode
+function handleEpisodeEnded() {
+    const autoPlayToggle = document.getElementById('autoPlayToggle');
+    if (autoPlayToggle && autoPlayToggle.checked) {
+        const currentIndex = filteredEpisodes.indexOf(currentEpisode);
+        if (currentIndex >= 0 && currentIndex < filteredEpisodes.length - 1) {
+            console.log('▶️ Auto-playing next episode');
+            playEpisode(currentIndex + 1);
+        }
+    }
 }
 
 function downloadEpisode(index) {
@@ -787,6 +984,19 @@ function formatDuration(duration) {
         return `${hours}:${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
     }
     return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
+}
+
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) {
+        return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function sanitizeFilename(filename) {
