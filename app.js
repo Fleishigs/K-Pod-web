@@ -82,6 +82,9 @@ function setupEventListeners() {
         updateNavigation();
     });
     
+    // Close Now Playing button (desktop sidebar)
+    document.getElementById('closeNowPlaying')?.addEventListener('click', closeNowPlaying);
+    
     // Mini player controls
     miniPlayerContent.addEventListener('click', openNowPlaying);
     miniPlayPause.addEventListener('click', (e) => {
@@ -169,11 +172,21 @@ function showPage(page) {
     
     updateNavigation();
     
-    // Show/hide mini player based on page
+    // Handle Now Playing visibility
     if (currentPage === 'nowplaying') {
-        hideMiniPlayer();
-    } else if (currentEpisode && audio.src) {
-        showMiniPlayer();
+        // On desktop, show as sidebar and keep mini player
+        if (window.innerWidth >= 1024) {
+            document.body.classList.add('now-playing-open');
+            showMiniPlayer(); // Keep mini player on desktop
+        } else {
+            // On mobile, hide mini player
+            hideMiniPlayer();
+        }
+    } else {
+        document.body.classList.remove('now-playing-open');
+        if (currentEpisode && audio.src) {
+            showMiniPlayer();
+        }
     }
 }
 
@@ -292,39 +305,49 @@ async function fetchWithFallback(url) {
 
 // Fetch artwork from RSS feeds for all podcasts
 async function fetchAllPodcastArtwork() {
-    for (let i = 0; i < podcasts.length; i++) {
-        const podcast = podcasts[i];
+    console.log('🎨 Fetching RSS artwork in parallel...');
+    
+    // Process 3 podcasts at a time for speed
+    const batchSize = 3;
+    
+    for (let i = 0; i < podcasts.length; i += batchSize) {
+        const batch = podcasts.slice(i, i + batchSize);
         
-        try {
-            console.log(`  🔍 [${i+1}/${podcasts.length}] Fetching RSS artwork for: ${podcast.name}`);
-            const xmlText = await fetchRSSFeed(podcast.rss_url);
-            const { channelInfo } = parseRSSFeed(xmlText);
-            
-            if (channelInfo.artwork) {
-                console.log(`  ✅ Found artwork for ${podcast.name}`);
-                podcast.rssArtwork = channelInfo.artwork;
+        // Process batch in parallel
+        await Promise.all(batch.map(async (podcast) => {
+            try {
+                console.log(`  🔍 [${podcasts.indexOf(podcast) + 1}/${podcasts.length}] ${podcast.name}`);
                 
-                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
-                if (card) {
-                    card.classList.remove('loading-artwork');
-                    card.innerHTML = `<img src="${channelInfo.artwork}" alt="${escapeHtml(podcast.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size: 3rem;\\'>🎙️</span>';">`;
+                const xmlText = await fetchRSSFeed(podcast.rss_url);
+                const { channelInfo } = parseRSSFeed(xmlText);
+                
+                if (channelInfo.artwork) {
+                    console.log(`  ✅ ${podcast.name}`);
+                    podcast.rssArtwork = channelInfo.artwork;
+                    
+                    const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                    if (card) {
+                        card.classList.remove('loading-artwork');
+                        card.innerHTML = `<img src="${channelInfo.artwork}" alt="${escapeHtml(podcast.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size: 3rem;\\'>🎙️</span>';">`;
+                    }
+                } else {
+                    console.log(`  ⚠️ No artwork for ${podcast.name}`);
+                    const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                    if (card) {
+                        card.classList.remove('loading-artwork');
+                    }
                 }
-            } else {
-                console.log(`  ⚠️ No artwork in RSS for ${podcast.name}, keeping emoji`);
+            } catch (error) {
+                console.warn(`  ❌ ${podcast.name}: ${error.message}`);
                 const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
                 if (card) {
                     card.classList.remove('loading-artwork');
                 }
             }
-        } catch (error) {
-            console.warn(`  ❌ Failed to fetch RSS for ${podcast.name}:`, error.message);
-            const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
-            if (card) {
-                card.classList.remove('loading-artwork');
-            }
-        }
+        }));
         
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Very short delay between batches
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
     console.log('✅ Finished fetching all RSS artwork');
 }
@@ -755,6 +778,15 @@ function openNowPlaying() {
     if (!currentEpisode) return;
     updateNowPlayingPage();
     showPage(nowPlayingPage);
+}
+
+function closeNowPlaying() {
+    // Go back to previous page
+    if (currentPodcast) {
+        showPage(podcastPage);
+    } else {
+        goHome();
+    }
 }
 
 function togglePlayPause() {

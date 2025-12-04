@@ -743,12 +743,89 @@ body {
 .now-playing-page {
     background: var(--bg-dark);
     overflow-y: auto;
+    position: relative;
+}
+
+.now-playing-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.now-playing-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
 }
 
 .now-playing-content {
     max-width: 600px;
     margin: 0 auto;
     padding: 20px;
+}
+
+/* Desktop Sidebar Layout */
+@media (min-width: 1024px) {
+    .now-playing-page.active {
+        position: fixed;
+        right: 0;
+        top: 70px;
+        bottom: 0;
+        width: 400px;
+        border-left: 1px solid var(--border);
+        background: var(--bg-card);
+        z-index: 998;
+        box-shadow: -4px 0 20px var(--shadow);
+    }
+    
+    /* Show close button on desktop */
+    .now-playing-page.active .now-playing-close-btn {
+        display: flex;
+    }
+    
+    .now-playing-content {
+        max-width: 100%;
+        padding: 20px;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    /* Adjust main content when Now Playing is open */
+    body.now-playing-open .page:not(.now-playing-page) {
+        margin-right: 400px;
+        transition: margin-right 0.3s ease;
+    }
+    
+    /* Smaller artwork for sidebar */
+    .now-playing-page.active .now-playing-artwork {
+        max-width: 280px;
+        margin: 10px auto;
+    }
+    
+    /* Compact settings */
+    .now-playing-page.active .now-playing-settings {
+        margin-top: 15px;
+    }
+    
+    .now-playing-page.active .setting-group {
+        padding: 12px 0;
+    }
+    
+    /* Show mini player on desktop even when Now Playing is open */
+    body.now-playing-open .mini-player {
+        transform: translateY(0);
+    }
 }
 
 .now-playing-artwork {
