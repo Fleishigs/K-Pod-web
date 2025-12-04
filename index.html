@@ -75,12 +75,134 @@
         <div id="episodeList" class="episode-list-container"></div>
     </div>
 
+    <!-- Now Playing Page -->
+    <div id="nowPlayingPage" class="page now-playing-page">
+        <div class="now-playing-content">
+            <div class="now-playing-artwork" id="nowPlayingArtwork">🎙️</div>
+            
+            <div class="now-playing-info">
+                <h2 id="nowPlayingTitle" class="now-playing-title">Episode Title</h2>
+                <p id="nowPlayingPodcast" class="now-playing-podcast">Podcast Name</p>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="now-playing-progress-section">
+                <div class="now-playing-progress-bar" id="nowPlayingProgressBar">
+                    <div class="now-playing-progress-fill" id="nowPlayingProgressFill"></div>
+                    <div class="now-playing-progress-handle" id="nowPlayingProgressHandle"></div>
+                </div>
+                <div class="now-playing-time">
+                    <span id="nowPlayingCurrentTime">0:00</span>
+                    <span id="nowPlayingDuration">0:00</span>
+                </div>
+            </div>
+
+            <!-- Main Controls -->
+            <div class="now-playing-controls">
+                <button id="nowPlayingRewind" class="control-btn">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                    </svg>
+                    <span class="control-label">15s</span>
+                </button>
+
+                <button id="nowPlayingPlayPause" class="control-btn control-btn-play">
+                    <svg id="nowPlayingPlayIcon" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    <svg id="nowPlayingPauseIcon" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                </button>
+
+                <button id="nowPlayingForward" class="control-btn">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
+                    </svg>
+                    <span class="control-label">30s</span>
+                </button>
+            </div>
+
+            <!-- Settings Panel -->
+            <div class="now-playing-settings">
+                <!-- Playback Speed -->
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 8.64L15.27 12 10 15.36V8.64M8 5v14l11-7L8 5z"/>
+                        </svg>
+                        Playback Speed
+                    </label>
+                    <div class="speed-buttons">
+                        <button class="speed-btn" data-speed="0.5">0.5×</button>
+                        <button class="speed-btn" data-speed="0.75">0.75×</button>
+                        <button class="speed-btn active" data-speed="1">1×</button>
+                        <button class="speed-btn" data-speed="1.25">1.25×</button>
+                        <button class="speed-btn" data-speed="1.5">1.5×</button>
+                        <button class="speed-btn" data-speed="1.75">1.75×</button>
+                        <button class="speed-btn" data-speed="2">2×</button>
+                    </div>
+                </div>
+
+                <!-- Volume Control -->
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                        </svg>
+                        Volume
+                    </label>
+                    <div class="volume-control">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 9v6h4l5 5V4l-5 5H7z"/>
+                        </svg>
+                        <input type="range" id="nowPlayingVolume" class="volume-slider" min="0" max="100" value="100">
+                        <span id="volumePercent" class="volume-percent">100%</span>
+                    </div>
+                </div>
+
+                <!-- Sleep Timer -->
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/>
+                        </svg>
+                        Sleep Timer
+                    </label>
+                    <div class="sleep-timer-buttons">
+                        <button class="timer-btn" data-minutes="5">5 min</button>
+                        <button class="timer-btn" data-minutes="10">10 min</button>
+                        <button class="timer-btn" data-minutes="15">15 min</button>
+                        <button class="timer-btn" data-minutes="30">30 min</button>
+                        <button class="timer-btn" data-minutes="60">1 hour</button>
+                        <button class="timer-btn" id="cancelTimer">Off</button>
+                    </div>
+                    <div id="timerStatus" class="timer-status hidden"></div>
+                </div>
+
+                <!-- Auto-Play Next (Toggle) -->
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                        </svg>
+                        Auto-Play Next Episode
+                    </label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoPlayToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Mini Player Bar (Android-style) -->
     <div id="miniPlayer" class="mini-player hidden">
         <div class="mini-player-progress">
             <div class="mini-player-progress-fill" id="miniProgressFill"></div>
         </div>
-        <div class="mini-player-content">
+        <div class="mini-player-content" id="miniPlayerContent">
             <div class="mini-player-left">
                 <div class="mini-player-artwork" id="miniPlayerArtwork">🎙️</div>
                 <div class="mini-player-info">
@@ -89,6 +211,9 @@
                 </div>
             </div>
             <div class="mini-player-controls">
+                <button class="mini-player-btn" id="miniSpeed">
+                    <span class="speed-text">1×</span>
+                </button>
                 <button class="mini-player-btn" id="miniRewind">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>

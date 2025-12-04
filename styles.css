@@ -738,3 +738,342 @@ body {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
 }
+
+/* Now Playing Page */
+.now-playing-page {
+    background: var(--bg-dark);
+    overflow-y: auto;
+}
+
+.now-playing-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.now-playing-artwork {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+    margin: 20px auto;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--accent) 0%, #d946a6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    overflow: hidden;
+    box-shadow: 0 20px 40px var(--shadow);
+    animation: float 3s ease-in-out infinite;
+}
+
+.now-playing-artwork img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.now-playing-info {
+    text-align: center;
+    padding: 20px;
+}
+
+.now-playing-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.now-playing-podcast {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Progress Section */
+.now-playing-progress-section {
+    padding: 20px 0;
+}
+
+.now-playing-progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    position: relative;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.now-playing-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.now-playing-progress-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    left: 0%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.now-playing-time {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Main Controls */
+.now-playing-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 30px 0;
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+
+.control-btn-play {
+    width: 80px;
+    height: 80px;
+    background: var(--accent);
+}
+
+.control-btn-play:hover {
+    background: var(--accent-hover);
+}
+
+.control-label {
+    position: absolute;
+    bottom: 2px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Settings Panel */
+.now-playing-settings {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.setting-group {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.setting-group:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Speed Buttons */
+.speed-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.speed-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.speed-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.speed-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* Volume Control */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.volume-percent {
+    min-width: 40px;
+    text-align: right;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Sleep Timer Buttons */
+.sleep-timer-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.timer-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.timer-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.timer-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.timer-status {
+    background: rgba(255, 107, 53, 0.2);
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: 0.3s;
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--accent);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* Mini Player Speed Button */
+.speed-text {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .now-playing-artwork {
+        max-width: 300px;
+    }
+    
+    .speed-buttons,
+    .sleep-timer-buttons {
+        justify-content: center;
+    }
+}

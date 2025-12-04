@@ -9,6 +9,7 @@ let currentPage = 'home';
 // DOM Elements
 const homePage = document.getElementById('homePage');
 const podcastPage = document.getElementById('podcastPage');
+const nowPlayingPage = document.getElementById('nowPlayingPage');
 const loading = document.getElementById('loading');
 const podcastsContainer = document.getElementById('podcastsContainer');
 
@@ -31,16 +32,40 @@ const audio = document.getElementById('audio');
 
 // Mini player elements
 const miniPlayer = document.getElementById('miniPlayer');
+const miniPlayerContent = document.getElementById('miniPlayerContent');
 const miniPlayerArtwork = document.getElementById('miniPlayerArtwork');
 const miniPlayerTitle = document.getElementById('miniPlayerTitle');
 const miniPlayerPodcast = document.getElementById('miniPlayerPodcast');
 const miniPlayPause = document.getElementById('miniPlayPause');
 const miniPlayIcon = document.getElementById('miniPlayIcon');
 const miniPauseIcon = document.getElementById('miniPauseIcon');
+const miniSpeed = document.getElementById('miniSpeed');
 const miniRewind = document.getElementById('miniRewind');
 const miniForward = document.getElementById('miniForward');
 const miniPlayerClose = document.getElementById('miniPlayerClose');
 const miniProgressFill = document.getElementById('miniProgressFill');
+
+// Now Playing page elements
+const nowPlayingArtwork = document.getElementById('nowPlayingArtwork');
+const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+const nowPlayingPodcast = document.getElementById('nowPlayingPodcast');
+const nowPlayingProgressBar = document.getElementById('nowPlayingProgressBar');
+const nowPlayingProgressFill = document.getElementById('nowPlayingProgressFill');
+const nowPlayingProgressHandle = document.getElementById('nowPlayingProgressHandle');
+const nowPlayingCurrentTime = document.getElementById('nowPlayingCurrentTime');
+const nowPlayingDuration = document.getElementById('nowPlayingDuration');
+const nowPlayingPlayPause = document.getElementById('nowPlayingPlayPause');
+const nowPlayingPlayIcon = document.getElementById('nowPlayingPlayIcon');
+const nowPlayingPauseIcon = document.getElementById('nowPlayingPauseIcon');
+const nowPlayingRewind = document.getElementById('nowPlayingRewind');
+const nowPlayingForward = document.getElementById('nowPlayingForward');
+const nowPlayingVolume = document.getElementById('nowPlayingVolume');
+const volumePercent = document.getElementById('volumePercent');
+
+// Settings state
+let currentSpeed = 1;
+let sleepTimer = null;
+let sleepTimerEndTime = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
@@ -149,11 +174,18 @@ async function loadPodcasts() {
         const data = JSON.parse(cleanedText);
         
         console.log('✅ Parsed JSON:', data);
+        console.log('📊 Number of podcasts:', data.podcasts?.length);
         
         if (data && data.podcasts && Array.isArray(data.podcasts)) {
             podcasts = data.podcasts;
             console.log(`✅ Loaded ${podcasts.length} podcasts`);
+            
+            // Render immediately with placeholder images
             renderPodcasts();
+            
+            // Then fetch RSS artwork for each podcast in the background
+            console.log('🎨 Fetching RSS artwork for all podcasts...');
+            fetchAllPodcastArtwork();
         } else {
             throw new Error('Invalid data format - missing podcasts array');
         }
@@ -167,6 +199,47 @@ async function loadPodcasts() {
             </div>
         `;
     }
+}
+
+// Fetch artwork from RSS feeds for all podcasts
+async function fetchAllPodcastArtwork() {
+    for (let i = 0; i < podcasts.length; i++) {
+        const podcast = podcasts[i];
+        
+        try {
+            console.log(`  🔍 [${i+1}/${podcasts.length}] Fetching RSS artwork for: ${podcast.name}`);
+            const xmlText = await fetchRSSFeed(podcast.rss_url);
+            const { channelInfo } = parseRSSFeed(xmlText);
+            
+            if (channelInfo.artwork) {
+                console.log(`  ✅ Found artwork for ${podcast.name}`);
+                podcast.rssArtwork = channelInfo.artwork;
+                
+                // Update the card image immediately
+                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                if (card) {
+                    card.classList.remove('loading-artwork');
+                    card.innerHTML = `<img src="${channelInfo.artwork}" alt="${escapeHtml(podcast.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size: 3rem;\\'>🎙️</span>';">`;
+                }
+            } else {
+                console.log(`  ⚠️ No artwork in RSS for ${podcast.name}, keeping emoji`);
+                const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+                if (card) {
+                    card.classList.remove('loading-artwork');
+                }
+            }
+        } catch (error) {
+            console.warn(`  ❌ Failed to fetch RSS for ${podcast.name}:`, error.message);
+            const card = document.querySelector(`[data-podcast-id="${podcast.id}"] .podcast-artwork`);
+            if (card) {
+                card.classList.remove('loading-artwork');
+            }
+        }
+        
+        // Small delay to avoid overwhelming the proxies
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    console.log('✅ Finished fetching all RSS artwork');
 }
 
 async function fetchWithFallback(url) {
@@ -205,22 +278,24 @@ function renderPodcasts() {
     loading.classList.add('hidden');
     podcastsContainer.classList.remove('hidden');
     
-    podcastsContainer.innerHTML = podcasts.map(podcast => `
-        <div class="podcast-card" onclick="openPodcast(${podcast.id})">
-            <div class="podcast-artwork">
-                ${podcast.artwork_url ? 
-                    `<img src="${podcast.artwork_url}" alt="${podcast.name}" onerror="this.parentElement.innerHTML='🎙️'">` : 
-                    '🎙️'
-                }
+    console.log('🎨 Rendering podcasts with RSS artwork loading...');
+    
+    podcastsContainer.innerHTML = podcasts.map(podcast => {
+        // Start with emoji and loading class, RSS artwork will load in background
+        return `
+            <div class="podcast-card" data-podcast-id="${podcast.id}" onclick="openPodcast(${podcast.id})">
+                <div class="podcast-artwork loading-artwork">
+                    <span style="font-size: 3rem;">🎙️</span>
+                </div>
+                <div class="podcast-details">
+                    <h2 class="podcast-name">${escapeHtml(podcast.name)}</h2>
+                    <span class="podcast-category">${escapeHtml(podcast.category)}</span>
+                    <p class="podcast-description">${escapeHtml(podcast.description)}</p>
+                    ${podcast.network ? `<p class="podcast-network">${escapeHtml(podcast.network)}</p>` : ''}
+                </div>
             </div>
-            <div class="podcast-details">
-                <h2 class="podcast-name">${podcast.name}</h2>
-                <span class="podcast-category">${podcast.category}</span>
-                <p class="podcast-description">${podcast.description}</p>
-                ${podcast.network ? `<p class="podcast-network">${podcast.network}</p>` : ''}
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Open Podcast
