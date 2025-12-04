@@ -25,7 +25,7 @@ body {
     overflow-x: hidden;
     min-height: 100vh;
     padding-top: 70px; /* Space for fixed top nav */
-    padding-bottom: 80px; /* Space for mini player */
+    padding-bottom: 130px; /* Space for mini player + footer */
 }
 
 /* Top Navigation Bar */
