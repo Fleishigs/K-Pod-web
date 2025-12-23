@@ -343,16 +343,16 @@ async function fetchWithFallback(url) {
     
     const methods = [
         {
-            name: 'Direct',
-            fn: () => fetch(url).then(r => r.text())
+            name: 'CorsProxy (Primary)',
+            fn: () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`).then(r => r.text())
         },
         {
             name: 'AllOrigins',
             fn: () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`).then(r => r.text())
         },
         {
-            name: 'CorsProxy',
-            fn: () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`).then(r => r.text())
+            name: 'Direct',
+            fn: () => fetch(url).then(r => r.text())
         }
     ];
     
