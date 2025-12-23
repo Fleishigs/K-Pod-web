@@ -462,6 +462,22 @@ async function openPodcast(id) {
     showPage(podcastPage);
     updateURL('podcast', id);
     
+    // Immediately set the basic info before loading RSS
+    podcastTitle.textContent = currentPodcast.name;
+    podcastCategory.textContent = currentPodcast.category;
+    podcastDescription.textContent = currentPodcast.description;
+    podcastNetwork.textContent = currentPodcast.network || '';
+    podcastNetwork.style.display = currentPodcast.network ? 'block' : 'none';
+    
+    // Set artwork immediately
+    if (currentPodcast.rssArtwork) {
+        podcastArtwork.innerHTML = `<img src="${currentPodcast.rssArtwork}" alt="${escapeHtml(currentPodcast.name)}" onerror="this.parentElement.innerHTML='🎙️'">`;
+    } else if (currentPodcast.artwork_url) {
+        podcastArtwork.innerHTML = `<img src="${currentPodcast.artwork_url}" alt="${escapeHtml(currentPodcast.name)}" onerror="this.parentElement.innerHTML='🎙️'">`;
+    } else {
+        podcastArtwork.textContent = '🎙️';
+    }
+    
     episodeSearch.value = '';
     episodeList.innerHTML = '';
     episodeLoading.style.display = 'flex';
@@ -472,15 +488,25 @@ async function openPodcast(id) {
 async function loadEpisodes() {
     if (!currentPodcast) return;
     
+    // Store the podcast ID we're loading for
+    const loadingPodcastId = currentPodcast.id;
+    
     try {
         const xmlText = await fetchRSSFeed(currentPodcast.rss_url);
+        
+        // Check if user clicked a different podcast while we were loading
+        if (currentPodcast.id !== loadingPodcastId) {
+            console.log('⚠️ User switched podcasts, ignoring stale data');
+            return;
+        }
+        
         const { episodes, channelInfo } = parseRSSFeed(xmlText);
         
         const rssArtwork = channelInfo.artwork || currentPodcast.artwork_url;
         const rssDescription = channelInfo.description || currentPodcast.description;
         
         if (rssArtwork) {
-            podcastArtwork.innerHTML = `<img src="${rssArtwork}" alt="${currentPodcast.name}" onerror="this.parentElement.innerHTML='🎙️'">`;
+            podcastArtwork.innerHTML = `<img src="${rssArtwork}" alt="${escapeHtml(currentPodcast.name)}" onerror="this.parentElement.innerHTML='🎙️'">`;
         } else {
             podcastArtwork.textContent = '🎙️';
         }
@@ -509,11 +535,16 @@ async function loadEpisodes() {
         renderEpisodes();
         
     } catch (error) {
+        // Check again if user switched podcasts
+        if (currentPodcast.id !== loadingPodcastId) {
+            return;
+        }
+        
         console.error('Error loading episodes:', error);
         episodeLoading.style.display = 'none';
         
         if (currentPodcast.artwork_url) {
-            podcastArtwork.innerHTML = `<img src="${currentPodcast.artwork_url}" alt="${currentPodcast.name}">`;
+            podcastArtwork.innerHTML = `<img src="${currentPodcast.artwork_url}" alt="${escapeHtml(currentPodcast.name)}">`;
         } else {
             podcastArtwork.textContent = '🎙️';
         }
